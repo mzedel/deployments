@@ -97,7 +97,6 @@ jobs:
 
   - job: test_unit
     container: golang:1.11
-    services: mongo
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
