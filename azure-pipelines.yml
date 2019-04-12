@@ -97,6 +97,7 @@ jobs:
 
   - job: test_unit
     container: golang:1.11
+    services: mongo
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
@@ -111,8 +112,8 @@ jobs:
 
           sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
           echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/3.6 main" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list
-          sudo apt-get -qq update
-          sudo apt-get install -qy --allow-unauthenticated mongodb-org-server=3.6.11
+          apt-get -qq update
+          apt-get install -qy --allow-unauthenticated mongodb-org-server=3.6.11
           go list ./... | grep -v vendor | xargs -n1 -I {} -P 4 go test -v -covermode=atomic -coverprofile=../../../{}/coverage.txt {} || exit $? ;
 
   - job: build
