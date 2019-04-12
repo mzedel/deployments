@@ -1,0 +1,172 @@
+jobs:
+  - job: build_acceptance
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    container: golang:1.11
+    steps:
+      - script: |
+        mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
+        cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+        ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
+        cd /go/src/github.com/mendersoftware/deployments
+        # Install code coverage tooling
+        go get -u github.com/axw/gocov/gocov
+        go get -u golang.org/x/tools/cmd/cover
+        # Install cyclomatic dependency analysis tool
+        go get -u github.com/fzipp/gocyclo
+        CGO_ENABLED=0 go test -c -o /go/src/github.com/mendersoftware/deployments/deployments-test -coverpkg $(go list ./... | grep -v vendor | grep -v mock | grep -v test | tr  '\n' ,);
+        cp /go/src/github.com/mendersoftware/deployments/deployments-test $CI_PROJECT_DIR
+
+  - job: prepare_acceptance
+    container: docker:git
+    dependsOn:
+      - build_acceptance
+    steps:
+      - script: |
+        docker build -f Dockerfile.acceptance-testing -t $DOCKER_REPOSITORY:prtest .;
+        docker save $DOCKER_REPOSITORY:prtest > tests_image.tar
+        docker build -t $DOCKER_REPOSITORY:pr .
+        docker run --rm --entrypoint "/bin/sh" -v $(pwd):/binary $DOCKER_REPOSITORY:pr -c "cp /usr/bin/deployments /binary"
+        docker build -t testing -f tests/Dockerfile tests
+        docker save testing > acceptance_testing_image.tar
+        git clone https://github.com/mendersoftware/mender-artifact.git mender-artifact-temp
+        docker build -t testing-artifact -f mender-artifact-temp/Dockerfile mender-artifact-temp
+        docker run --rm --entrypoint "/bin/sh" -v $(pwd):/binary testing-artifact -c "cp /go/bin/mender-artifact /binary"
+
+  - job: test:acceptance
+    dependsOn:
+      - prepare_acceptance
+    services:
+      - mongo
+    steps: 
+      - script: |
+        git clone https://github.com/mendersoftware/integration.git mender-integration
+        mv mender-integration/extra/travis-testing/* docs/* deployments mender-artifact tests/
+        docker load -i tests_image.tar
+        docker load -i acceptance_testing_image.tar
+      - task: DockerCompose@0
+        displayName: Composisiton test
+        dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
+        additionalDockerComposeFiles:
+          - $(pwd)/mender-integration/docker-compose.storage.minio.yml
+          - $(pwd)/mender-integration/docker-compose.demo.yml
+          - $(pwd)/tests/docker-compose-acceptance.yml
+        dockerComposeFileArgs:
+          - TESTS_DIR=$(pwd)/tests
+      - task: DockerCompose@0
+        displayName: Composisiton test
+        dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
+        additionalDockerComposeFiles:
+          - $(pwd)/mender-integration/docker-compose.storage.minio.yml
+          - $(pwd)/mender-integration/docker-compose.demo.yml
+          - $(pwd)/tests/docker-compose-acceptance.mt.yml
+        dockerComposeFileArgs:
+          - TESTS_DIR=$(pwd)/tests
+
+  - job: test:static
+    steps:
+      - script: |
+        mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
+        cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+        ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
+        cd /go/src/github.com/mendersoftware/deployments
+        # Install code coverage tooling
+        go get -u github.com/axw/gocov/gocov
+        go get -u golang.org/x/tools/cmd/cover
+        # Install cyclomatic dependency analysis tool
+        go get -u github.com/fzipp/gocyclo
+
+        curl -sL https://deb.nodesource.com/setup_11.x | bash -
+        apt-get -qq update
+        apt-get install -qy --allow-unauthenticated python-pip e2tools nodejs
+        pip install pyyaml
+        npm install -g swagger-cli
+        # Get our own Swagger verifier
+        wget https://raw.githubusercontent.com/mendersoftware/autodocs/master/verify_docs.py
+        # Test if code was formatted with 'go fmt'
+        # Command will format code and return modified files
+        # fail if any have been modified.
+        if [ -n "$(go fmt)" ]; then echo 'Code is not formatted with "go fmt"'; false; fi
+        # Perform static code analysys
+        go vet `go list ./... | grep -v vendor`
+        # Fail builds when the cyclomatic complexity reaches 15 or more
+        gocyclo -over 15 `find . -iname '*.go' | grep -v 'vendor' | grep -v '_test.go'`
+        # Verify that the Swagger docs are valid
+        swagger-cli validate docs/*.yml
+        # Verify that the Swagger docs follow the autodeployment requirements
+        if test "$(ls -A docs)"; then python2.7 verify_docs.py `find docs -name "*.yml"`; fi
+
+  - job: test:unit
+    steps:
+      - script: |
+        mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
+        cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+        ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
+        cd /go/src/github.com/mendersoftware/deployments
+        # Install code coverage tooling
+        go get -u github.com/axw/gocov/gocov
+        go get -u golang.org/x/tools/cmd/cover
+        # Install cyclomatic dependency analysis tool
+        go get -u github.com/fzipp/gocyclo
+
+        apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
+        echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/3.6 main" | tee /etc/apt/sources.list.d/mongodb-org-3.6.list
+        apt-get -qq update
+        apt-get install -qy --allow-unauthenticated mongodb-org-server=3.6.11
+        go list ./... | grep -v vendor | xargs -n1 -I {} -P 4 go test -v -covermode=atomic -coverprofile=../../../{}/coverage.txt {} || exit $? ;
+
+  - job: build
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    steps:
+      - task: Docker@0
+        displayName: Build image
+        inputs:
+          dockerFile: Dockerfile
+          imageName: mendersoftware/$(Build.Repository.Name):$(Build.BuildId)
+      - task: Docker@1
+        displayName: Tag image
+        inputs:
+          command: tag
+          dockerFile: Dockerfile
+          imageName: mendersoftware/$(Build.Repository.Name):$(Build.BuildId)
+          arguments: 'mendersoftware/$(Build.Repository.Name):$(Build.BuildId) mendersoftware/$(Build.Repository.Name):prtest'
+
+  - job: publish:docs
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    container: alpine
+    steps:
+      - script: |
+          echo 'publishing docs'
+        displayName: 'publish docs'
+
+  - job: publish:tests
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    container: alpine
+    dependsOn:
+      - test:acceptance
+      - test:unit
+      - test:static
+    steps:
+      - script: |
+          echo "coverage-acceptance"
+          # bash <(curl -s https://codecov.io/bash) -F unittests ;
+          # bash <(curl -s https://codecov.io/bash) -F acceptance ;
+        displayName: 'publish docs'
+
+  - job: publish:build
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    steps:
+      - task: Docker@0
+        displayName: Push image
+        inputs:
+          dockerFile: Dockerfile
+          command: push
+          imageName: mendersoftware/$(Build.Repository.Name):$BUILD_SOURCEVERSION
+
+  - job: integration
+    steps:
+      - script: echo 'trigger'
