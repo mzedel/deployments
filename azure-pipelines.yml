@@ -132,7 +132,7 @@ jobs:
           imageName: mendersoftware/$(Build.Repository.Name):$(Build.BuildId)
           arguments: 'mendersoftware/$(Build.Repository.Name):$(Build.BuildId) mendersoftware/$(Build.Repository.Name):prtest'
 
-  - job: publish:docs
+  - job: publish_docs
     pool:
       vmImage: 'Ubuntu-16.04'
     container: alpine
@@ -141,7 +141,7 @@ jobs:
           echo 'publishing docs'
         displayName: 'publish docs'
 
-  - job: publish:tests
+  - job: publish_tests
     pool:
       vmImage: 'Ubuntu-16.04'
     container: alpine
@@ -156,7 +156,7 @@ jobs:
           # bash <(curl -s https://codecov.io/bash) -F acceptance ;
         displayName: 'publish docs'
 
-  - job: publish:build
+  - job: publish_build
     pool:
       vmImage: 'Ubuntu-16.04'
     steps:
