@@ -36,8 +36,7 @@ jobs:
   - job: test:acceptance
     dependsOn:
       - prepare_acceptance
-    services:
-      - mongo
+    services: mongo
     steps: 
       - script: |
           git clone https://github.com/mendersoftware/integration.git mender-integration
@@ -46,22 +45,24 @@ jobs:
           docker load -i acceptance_testing_image.tar
       - task: DockerCompose@0
         displayName: Composisiton test
-        dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
-        additionalDockerComposeFiles:
-          - $(pwd)/mender-integration/docker-compose.storage.minio.yml
-          - $(pwd)/mender-integration/docker-compose.demo.yml
-          - $(pwd)/tests/docker-compose-acceptance.yml
-        dockerComposeFileArgs:
-          - TESTS_DIR=$(pwd)/tests
+        inputs:
+          dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
+          additionalDockerComposeFiles:
+              $(pwd)/mender-integration/docker-compose.storage.minio.yml
+              $(pwd)/mender-integration/docker-compose.demo.yml
+              $(pwd)/tests/docker-compose-acceptance.yml
+          dockerComposeFileArgs:
+              TESTS_DIR=$(pwd)/tests
       - task: DockerCompose@0
         displayName: Composisiton test
-        dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
-        additionalDockerComposeFiles:
-          - $(pwd)/mender-integration/docker-compose.storage.minio.yml
-          - $(pwd)/mender-integration/docker-compose.demo.yml
-          - $(pwd)/tests/docker-compose-acceptance.mt.yml
-        dockerComposeFileArgs:
-          - TESTS_DIR=$(pwd)/tests
+        inputs:
+          dockerComposeFile: $(pwd)/mender-integration/docker-compose.yml
+          additionalDockerComposeFiles:
+              $(pwd)/mender-integration/docker-compose.storage.minio.yml
+              $(pwd)/mender-integration/docker-compose.demo.yml
+              $(pwd)/tests/docker-compose-acceptance.mt.yml
+          dockerComposeFileArgs:
+              TESTS_DIR=$(pwd)/tests
 
   - job: test:static
     steps:
