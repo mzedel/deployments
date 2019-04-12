@@ -36,7 +36,6 @@ jobs:
   - job: test:acceptance
     dependsOn:
       - prepare_acceptance
-    services: mongo
     steps: 
       - script: |
           git clone https://github.com/mendersoftware/integration.git mender-integration
