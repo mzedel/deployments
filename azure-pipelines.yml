@@ -18,7 +18,6 @@ jobs:
           cp /go/src/github.com/mendersoftware/deployments/deployments-test $BUILD_SOURCESDIRECTORY
 
   - job: prepare_acceptance
-    container: docker:git
     dependsOn:
       - build_acceptance
     steps:
@@ -109,15 +108,17 @@ jobs:
           # Install cyclomatic dependency analysis tool
           go get -u github.com/fzipp/gocyclo
 
-          apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
           echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/3.6 main" | tee /etc/apt/sources.list.d/mongodb-org-3.6.list
-          apt-get -qq update
-          apt-get install -qy --allow-unauthenticated mongodb-org-server=3.6.11
+          sudo apt-get -qq update
+          sudo apt-get install -qy --allow-unauthenticated mongodb-org-server=3.6.11
           go list ./... | grep -v vendor | xargs -n1 -I {} -P 4 go test -v -covermode=atomic -coverprofile=../../../{}/coverage.txt {} || exit $? ;
 
   - job: build
     pool:
       vmImage: 'Ubuntu-16.04'
+    dependsOn:
+      - test_acceptance
     steps:
       - task: Docker@0
         displayName: Build image
@@ -130,7 +131,7 @@ jobs:
           command: tag
           dockerFile: Dockerfile
           imageName: mendersoftware/$(Build.Repository.Name):$(Build.BuildId)
-          arguments: 'mendersoftware/$(Build.Repository.Name):$(Build.BuildId) mendersoftware/$(Build.Repository.Name):prtest'
+          arguments: '$(Build.Repository.Name):$(Build.BuildId) $(Build.Repository.Name):prtest'
 
   - job: publish_docs
     pool:
