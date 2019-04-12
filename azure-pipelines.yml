@@ -96,6 +96,7 @@ jobs:
           if test "$(ls -A docs)"; then python2.7 verify_docs.py `find docs -name "*.yml"`; fi
 
   - job: test_unit
+    container: golang:1.11
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
