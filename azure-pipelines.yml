@@ -6,7 +6,7 @@ jobs:
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
-          cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+          cp -r $BUILD_SOURCESDIRECTORY /go/src/github.com/mendersoftware/deployments
           ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
           cd /go/src/github.com/mendersoftware/deployments
           # Install code coverage tooling
@@ -15,7 +15,7 @@ jobs:
           # Install cyclomatic dependency analysis tool
           go get -u github.com/fzipp/gocyclo
           CGO_ENABLED=0 go test -c -o /go/src/github.com/mendersoftware/deployments/deployments-test -coverpkg $(go list ./... | grep -v vendor | grep -v mock | grep -v test | tr  '\n' ,);
-          cp /go/src/github.com/mendersoftware/deployments/deployments-test $CI_PROJECT_DIR
+          cp /go/src/github.com/mendersoftware/deployments/deployments-test $BUILD_SOURCESDIRECTORY
 
   - job: prepare_acceptance
     container: docker:git
@@ -67,7 +67,7 @@ jobs:
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
-          cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+          cp -r $BUILD_SOURCESDIRECTORY /go/src/github.com/mendersoftware/deployments
           ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
           cd /go/src/github.com/mendersoftware/deployments
           # Install code coverage tooling
@@ -100,7 +100,7 @@ jobs:
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
-          cp -r $CI_PROJECT_DIR /go/src/github.com/mendersoftware/deployments
+          cp -r $BUILD_SOURCESDIRECTORY /go/src/github.com/mendersoftware/deployments
           ln -s /go/src/github.com/mendersoftware /go/src/_/builds/mendersoftware
           cd /go/src/github.com/mendersoftware/deployments
           # Install code coverage tooling
