@@ -33,7 +33,7 @@ jobs:
           docker build -t testing-artifact -f mender-artifact-temp/Dockerfile mender-artifact-temp
           docker run --rm --entrypoint "/bin/sh" -v $(pwd):/binary testing-artifact -c "cp /go/bin/mender-artifact /binary"
 
-  - job: test:acceptance
+  - job: test_acceptance
     dependsOn:
       - prepare_acceptance
     steps: 
@@ -63,7 +63,7 @@ jobs:
           dockerComposeFileArgs:
               TESTS_DIR=$(pwd)/tests
 
-  - job: test:static
+  - job: test_static
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
@@ -96,7 +96,7 @@ jobs:
           # Verify that the Swagger docs follow the autodeployment requirements
           if test "$(ls -A docs)"; then python2.7 verify_docs.py `find docs -name "*.yml"`; fi
 
-  - job: test:unit
+  - job: test_unit
     steps:
       - script: |
           mkdir -p /go/src/github.com/mendersoftware /go/src/_/builds
@@ -146,9 +146,9 @@ jobs:
       vmImage: 'Ubuntu-16.04'
     container: alpine
     dependsOn:
-      - test:acceptance
-      - test:unit
-      - test:static
+      - test_acceptance
+      - test_unit
+      - test_static
     steps:
       - script: |
           echo "coverage-acceptance"
