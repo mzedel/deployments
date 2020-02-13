@@ -1,4 +1,4 @@
-FROM golang:1.11.4-alpine3.8 as builder
+FROM golang:1.11.11-alpine3.8 as builder
 RUN apk update && apk upgrade && \
      apk add \
      xz-dev \
