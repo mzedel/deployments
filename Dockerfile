@@ -8,7 +8,7 @@ RUN mkdir -p /go/src/github.com/mendersoftware/deployments
 COPY . /go/src/github.com/mendersoftware/deployments
 RUN cd /go/src/github.com/mendersoftware/deployments && env CGO_ENABLED=1 go build
 
-FROM alpine:3.6
+FROM alpine:3.12.0
 RUN apk update && apk upgrade && \
      apk add --no-cache ca-certificates
 RUN mkdir -p /etc/deployments
